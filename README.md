@@ -58,7 +58,8 @@ Fill in the fields:
 1. Create a Feishu app with `doc:read`, `doc:write`, `drive:read`, and `drive:write` scopes.
 2. Record the app’s `app_id` and `app_secret`, and put them into `config.json`.
 3. The script automatically calls `tenant_access_token/internal` each run; you do not need to refresh tokens manually. If you prefer to supply a token yourself, fill `lark_access_token` in your local `config.json`.
-4. To get the folder token, open the folder in Feishu Drive and copy the token from the URL (`https://open.feishu.cn/open-apis/drive/home/?folder_token=fldxxxx`). The script will only reuse documents that are DocX type; if a legacy Doc already exists with the same name, it will create a new DocX file.
+4. Grant the target Drive folder “edit” access to your app’s bot account (share the folder to the bot, or place the bot in a team space with access); otherwise the Drive API returns `forbidden`.
+5. To get the folder token, open the folder in Feishu Drive and copy the token from the URL (`https://open.feishu.cn/open-apis/drive/home/?folder_token=fldxxxx`). The script will only reuse documents that are DocX type; if a legacy Doc already exists with the same name, it will create a new DocX file.
 
 ## Running the daily task
 
