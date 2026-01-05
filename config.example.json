@@ -7,6 +7,9 @@
   "lark_folder_token": "YOUR_LARK_ROOT_FOLDER_TOKEN",
   "english_rss_url": "https://feeds.arstechnica.com/arstechnica/index",
   "netflix_rss_url": "https://netflixtechblog.com/feed",
+  "netflix_rss_fallback_urls": [
+    "https://medium.com/feed/netflix-techblog"
+  ],
   "netflix_max_chars": 12000,
   "netflix_verify_ssl": true,
   "netflix_ca_bundle": "",

@@ -78,6 +78,7 @@ class NetflixTechBlogRSSClient:
     def __init__(
         self,
         feed_url: str = "https://netflixtechblog.com/feed",
+        fallback_feed_urls: Optional[List[str]] = None,
         session: Optional[requests.Session] = None,
         timeout: int = 10,
         max_chars: int = 12000,
@@ -87,6 +88,7 @@ class NetflixTechBlogRSSClient:
         allow_curl_fallback: bool = True,
     ):
         self.feed_url = feed_url
+        self.fallback_feed_urls = [url for url in (fallback_feed_urls or []) if url]
         self.session = session or requests.Session()
         self.timeout = timeout
         self.max_chars = max_chars
@@ -127,30 +129,66 @@ class NetflixTechBlogRSSClient:
         parser.feed(html)
         return parser.get_text()
 
-    def fetch_latest(self, limit: int = 1) -> List[NetflixTechBlogItem]:
-        logging.debug("Fetching Netflix Tech Blog RSS from %s", self.feed_url)
-        try:
-            resp = self.session.get(self.feed_url, timeout=self.timeout, verify=self.verify)
-        except requests_exceptions.SSLError:
-            if self.allow_curl_fallback:
-                logging.warning(
-                    "SSL verification failed fetching %s; retrying via system curl.",
-                    self.feed_url,
-                )
-                content = self._fetch_via_curl()
-                root = ET.fromstring(content)
-                return self._parse_items(root, limit=limit)
-            if not self.allow_insecure_fallback:
-                raise
-            logging.warning(
-                "SSL verification failed fetching %s; retrying with verify=False (INSECURE).",
-                self.feed_url,
-            )
-            resp = self.session.get(self.feed_url, timeout=self.timeout, verify=False)
-        resp.raise_for_status()
+    def _candidate_feed_urls(self) -> List[str]:
+        urls = [self.feed_url]
+        for url in self.fallback_feed_urls:
+            if url not in urls:
+                urls.append(url)
+        return urls
 
-        root = ET.fromstring(resp.content)
-        return self._parse_items(root, limit=limit)
+    def fetch_latest(self, limit: int = 1) -> List[NetflixTechBlogItem]:
+        last_error: Optional[Exception] = None
+        for url in self._candidate_feed_urls():
+            logging.debug("Fetching Netflix Tech Blog RSS from %s", url)
+            try:
+                resp = self.session.get(url, timeout=self.timeout, verify=self.verify)
+                resp.raise_for_status()
+                root = ET.fromstring(resp.content)
+                return self._parse_items(root, limit=limit)
+            except requests_exceptions.SSLError as exc:
+                last_error = exc
+                if self.allow_insecure_fallback:
+                    logging.warning(
+                        "SSL verification failed fetching %s; retrying with verify=False (INSECURE).",
+                        url,
+                    )
+                    resp = self.session.get(url, timeout=self.timeout, verify=False)
+                    resp.raise_for_status()
+                    root = ET.fromstring(resp.content)
+                    return self._parse_items(root, limit=limit)
+                if self.allow_curl_fallback:
+                    logging.warning(
+                        "SSL verification failed fetching %s; retrying via system curl.",
+                        url,
+                    )
+                    content = self._fetch_via_curl() if url == self.feed_url else self._fetch_via_curl_url(url)
+                    root = ET.fromstring(content)
+                    return self._parse_items(root, limit=limit)
+                logging.warning("SSL verification failed fetching %s; trying next feed URL.", url)
+                continue
+            except (requests_exceptions.RequestException, ET.ParseError, RuntimeError) as exc:
+                last_error = exc
+                logging.warning("Failed fetching/parsing %s; trying next feed URL. (%s)", url, type(exc).__name__)
+                continue
+
+        raise RuntimeError(
+            f"Unable to fetch Netflix Tech Blog RSS from any configured URL: {self._candidate_feed_urls()}"
+        ) from last_error
+
+    def _fetch_via_curl_url(self, url: str) -> bytes:
+        timeout = max(1, int(self.timeout))
+        cmd = [
+            "curl",
+            "-fsSL",
+            "--max-time",
+            str(timeout),
+            url,
+        ]
+        result = subprocess.run(cmd, check=False, capture_output=True)
+        if result.returncode != 0:
+            stderr = (result.stderr or b"").decode("utf-8", errors="replace")
+            raise RuntimeError(f"curl failed fetching {url}: {stderr[:500]}")
+        return result.stdout
 
     def _parse_items(self, root: ET.Element, *, limit: int) -> List[NetflixTechBlogItem]:
         channel = root.find("channel")

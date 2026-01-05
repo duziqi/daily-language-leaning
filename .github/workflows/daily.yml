@@ -13,6 +13,10 @@ concurrency:
 jobs:
   run:
     runs-on: ubuntu-latest
+    env:
+      # Prefer system CA bundle on Ubuntu runners (helps when certifi-based validation is flaky).
+      SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
+      REQUESTS_CA_BUNDLE: /etc/ssl/certs/ca-certificates.crt
 
     steps:
       - name: Checkout
@@ -42,11 +46,12 @@ jobs:
             "lark_folder_token": "${{ secrets.LARK_FOLDER_TOKEN }}",
             "english_rss_url": "${{ secrets.ENGLISH_RSS_URL || 'https://feeds.arstechnica.com/arstechnica/index' }}",
             "netflix_rss_url": "${{ secrets.NETFLIX_RSS_URL || 'https://netflixtechblog.com/feed' }}",
+            "netflix_rss_fallback_urls": ["https://medium.com/feed/netflix-techblog"],
             "netflix_max_chars": 12000,
             "netflix_verify_ssl": true,
             "netflix_ca_bundle": "",
             "netflix_allow_insecure_fallback": false,
-            "netflix_allow_curl_fallback": true,
+            "netflix_allow_curl_fallback": false,
             "japanese_rss_url": "${{ secrets.JAPANESE_RSS_URL || 'https://www3.nhk.or.jp/rss/news/cat0.xml' }}",
             "max_english_items": 4,
             "request_timeout": 20
@@ -56,4 +61,3 @@ jobs:
       - name: Run daily task
         run: |
           python daily_task.py
-

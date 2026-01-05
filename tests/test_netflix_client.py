@@ -106,9 +106,46 @@ def test_netflix_rss_ssl_fallback_retries_with_verify_false():
 
     session = _SSLFailOnceSession(rss)
     client = NetflixTechBlogRSSClient(
-        session=session, allow_insecure_fallback=True, allow_curl_fallback=False
+        session=session, allow_insecure_fallback=True, allow_curl_fallback=True
     )
     items = client.fetch_latest(limit=1)
     assert len(items) == 1
     assert session.calls[0]["verify"] is True
     assert session.calls[1]["verify"] is False
+
+
+def test_netflix_rss_tries_fallback_urls_when_primary_fails_ssl():
+    rss_ok = b"""<?xml version='1.0' encoding='UTF-8'?>
+<rss version='2.0' xmlns:content='http://purl.org/rss/1.0/modules/content/'>
+  <channel>
+    <item>
+      <title>From Fallback</title>
+      <link>https://netflixtechblog.com/example</link>
+      <content:encoded><![CDATA[<p>Hello</p>]]></content:encoded>
+    </item>
+  </channel>
+</rss>
+"""
+
+    class _FailPrimarySession(_FakeSession):
+        def get(self, url: str, timeout: int = 10, verify=True):  # noqa: ANN001
+            from requests import exceptions as requests_exceptions
+
+            self.calls.append({"url": url, "timeout": timeout, "verify": verify})
+            if url == "https://netflixtechblog.com/feed":
+                raise requests_exceptions.SSLError("bad cert")
+            return _FakeResponse(content=rss_ok)
+
+    session = _FailPrimarySession(rss_ok)
+    client = NetflixTechBlogRSSClient(
+        feed_url="https://netflixtechblog.com/feed",
+        fallback_feed_urls=["https://medium.com/feed/netflix-techblog"],
+        session=session,
+        allow_insecure_fallback=False,
+        allow_curl_fallback=False,
+    )
+    items = client.fetch_latest(limit=1)
+    assert len(items) == 1
+    assert items[0].title == "From Fallback"
+    assert session.calls[0]["url"] == "https://netflixtechblog.com/feed"
+    assert session.calls[1]["url"] == "https://medium.com/feed/netflix-techblog"

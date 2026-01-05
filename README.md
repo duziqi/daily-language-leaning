@@ -40,6 +40,9 @@ Fill in the fields:
   "lark_folder_token": "fldxxx",
   "english_rss_url": "https://feeds.arstechnica.com/arstechnica/index",
   "netflix_rss_url": "https://netflixtechblog.com/feed",
+  "netflix_rss_fallback_urls": [
+    "https://medium.com/feed/netflix-techblog"
+  ],
   "netflix_max_chars": 12000,
   "netflix_verify_ssl": true,
   "netflix_ca_bundle": "",
@@ -58,6 +61,7 @@ Fill in the fields:
 - `lark_folder_token`: Feishu Drive folder token where monthly Docs should be created (ensure it’s a Drive folder, not Knowledge Base).
 - `english_rss_url`: Ars Technica RSS feed (default is the main site index); the script takes the 10 newest posts and filters AI/programming stories.
 - `netflix_rss_url`: Netflix Tech Blog RSS feed used for the backend English-coaching section.
+- `netflix_rss_fallback_urls`: optional list of fallback RSS URLs (e.g. Medium feed) to try when the primary feed fails due to SSL or parsing issues.
 - `netflix_max_chars`: max characters of the Netflix article text to include in the LLM prompt (to avoid overly long inputs).
 - `netflix_verify_ssl`: whether to verify HTTPS certificates when fetching the Netflix RSS feed (recommended: `true`).
 - `netflix_ca_bundle`: optional path to a custom CA bundle file (PEM). Useful behind a corporate proxy.
@@ -65,6 +69,8 @@ Fill in the fields:
 - `netflix_allow_curl_fallback`: if `true`, when SSL verification fails in Python, retry the RSS fetch via system `curl` (often uses macOS Keychain trust store).
 
 If you see `SSLCertVerificationError` for Netflix while `curl` works, prefer setting `netflix_allow_curl_fallback` to `true` or configuring `netflix_ca_bundle`.
+
+If you run this project in GitHub Actions and the runner cannot validate `netflixtechblog.com` certificates, prefer using a Medium fallback URL via `netflix_rss_fallback_urls`.
 - `japanese_rss_url`: RSS feed that provides real Japanese news (default: NHK 国内総合 `cat0`).
 - `request_timeout`: network timeout in seconds for all HTTP calls.
 

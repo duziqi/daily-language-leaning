@@ -201,6 +201,10 @@ def main() -> None:
 
     netflix_client = NetflixTechBlogRSSClient(
         feed_url=config.get("netflix_rss_url", "https://netflixtechblog.com/feed"),
+        fallback_feed_urls=(
+            config.get("netflix_rss_fallback_urls")
+            or ["https://medium.com/feed/netflix-techblog"]
+        ),
         timeout=timeout,
         max_chars=int(config.get("netflix_max_chars", 12000)),
         ca_bundle=(config.get("netflix_ca_bundle") or None),
