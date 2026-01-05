@@ -3,8 +3,8 @@ name: Daily language learning
 on:
   workflow_dispatch:
   schedule:
-    # Runs daily at 01:00 UTC. Adjust as needed.
-    - cron: "0 1 * * *"
+    # Runs daily at 08:00 JST (23:00 UTC).
+    - cron: "0 23 * * *"
 
 concurrency:
   group: daily-language-learning
