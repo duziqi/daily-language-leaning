@@ -38,9 +38,15 @@ Fill in the fields:
   "lark_app_secret": "xxx",
   "lark_access_token": "",
   "lark_folder_token": "fldxxx",
-  "japanese_rss_url": "https://www3.nhk.or.jp/news/easy/index.xml",
+  "english_rss_url": "https://feeds.arstechnica.com/arstechnica/index",
+  "netflix_rss_url": "https://netflixtechblog.com/feed",
+  "netflix_max_chars": 12000,
+  "netflix_verify_ssl": true,
+  "netflix_ca_bundle": "",
+  "netflix_allow_insecure_fallback": false,
+  "netflix_allow_curl_fallback": true,
+  "japanese_rss_url": "https://www3.nhk.or.jp/rss/news/cat0.xml",
   "max_english_items": 4,
-  "max_japanese_items": 2,
   "request_timeout": 15
 }
 ```
@@ -50,7 +56,16 @@ Fill in the fields:
 - `lark_app_id` & `lark_app_secret`: Feishu app credentials; the script will fetch a fresh tenant access token automatically for every run.
 - `lark_access_token`: optional manual override; leave blank to auto-fetch via app credentials.
 - `lark_folder_token`: Feishu Drive folder token where monthly Docs should be created (ensure it’s a Drive folder, not Knowledge Base).
-- `japanese_rss_url`: RSS feed that provides real Japanese news (default: NHK News Web Easy).
+- `english_rss_url`: Ars Technica RSS feed (default is the main site index); the script takes the 10 newest posts and filters AI/programming stories.
+- `netflix_rss_url`: Netflix Tech Blog RSS feed used for the backend English-coaching section.
+- `netflix_max_chars`: max characters of the Netflix article text to include in the LLM prompt (to avoid overly long inputs).
+- `netflix_verify_ssl`: whether to verify HTTPS certificates when fetching the Netflix RSS feed (recommended: `true`).
+- `netflix_ca_bundle`: optional path to a custom CA bundle file (PEM). Useful behind a corporate proxy.
+- `netflix_allow_insecure_fallback`: if `true`, retry Netflix RSS fetch with `verify=false` when SSL verification fails (insecure; use only if you trust your network).
+- `netflix_allow_curl_fallback`: if `true`, when SSL verification fails in Python, retry the RSS fetch via system `curl` (often uses macOS Keychain trust store).
+
+If you see `SSLCertVerificationError` for Netflix while `curl` works, prefer setting `netflix_allow_curl_fallback` to `true` or configuring `netflix_ca_bundle`.
+- `japanese_rss_url`: RSS feed that provides real Japanese news (default: NHK 国内総合 `cat0`).
 - `request_timeout`: network timeout in seconds for all HTTP calls.
 
 ### Obtaining Feishu tokens
@@ -70,10 +85,14 @@ python daily_task.py
 
 What the script does:
 
-1. Fetches 3–5 top Hacker News technology stories (`hn_client.py`).
-2. Fetches 1–2 latest Japanese RSS articles (`rss_client.py`).
-3. Calls OpenAI twice to generate English learning material and Japanese study notes (`llm_utils.py`).
-4. Ensures a monthly Feishu Doc exists and prepends the new entry at the top (`lark_client.py`).
+1. Fetches the 10 latest Ars Technica posts, keeps the AI/programming-related ones, and builds an English-learning prompt (`ars_client.py`).
+2. Fetches the latest Netflix Tech Blog article and extracts the full text for backend English coaching (`netflix_client.py`).
+3. Fetches the latest five Japanese RSS articles from NHK (`rss_client.py`), randomly selects one for study, and includes both the original text and its romaji transcription.
+4. Calls OpenAI to generate:
+   - English tech news summary + Chinese translation
+   - Backend architect English-coaching content (core tech chunks + logic connector + mock interview)
+   - Japanese study notes with romaji-enhanced vocab lists (`llm_utils.py`).
+5. Ensures a monthly Feishu Doc exists and prepends the new entry at the top (`lark_client.py`).
 
 If you schedule it with cron, run the script from this repository root so `config.json` is found correctly.
 
@@ -81,4 +100,4 @@ If you schedule it with cron, run the script from this repository root so `confi
 
 - Enable debug logs by setting `export PYTHONLOGGING=DEBUG` before running or edit `daily_task.py` to change the logging level.
 - Verify Feishu tokens with a quick `curl` call if document creation fails.
-- NHK feed occasionally omits descriptions; adjust `max_japanese_items` in `config.json` if you need more retries.
+- NHK feed occasionally omits descriptions; if random selection hits a blank item, rerun or adjust the `limit` parameter in `daily_task.py` to pull more than five candidates.

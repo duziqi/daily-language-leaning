@@ -5,8 +5,14 @@
   "lark_app_secret": "YOUR_LARK_APP_SECRET",
   "lark_access_token": "",
   "lark_folder_token": "YOUR_LARK_ROOT_FOLDER_TOKEN",
-  "japanese_rss_url": "https://www3.nhk.or.jp/news/easy/index.xml",
+  "english_rss_url": "https://feeds.arstechnica.com/arstechnica/index",
+  "netflix_rss_url": "https://netflixtechblog.com/feed",
+  "netflix_max_chars": 12000,
+  "netflix_verify_ssl": true,
+  "netflix_ca_bundle": "",
+  "netflix_allow_insecure_fallback": false,
+  "netflix_allow_curl_fallback": true,
+  "japanese_rss_url": "https://www3.nhk.or.jp/rss/news/cat0.xml",
   "max_english_items": 4,
-  "max_japanese_items": 2,
   "request_timeout": 15
 }

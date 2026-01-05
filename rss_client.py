@@ -41,7 +41,7 @@ class JapaneseRSSClient:
             logging.debug("Unable to parse pubDate '%s'", value)
             return datetime.now(timezone.utc)
 
-    def fetch_items(self, limit: int = 2) -> List[JapaneseNewsItem]:
+    def fetch_items(self, limit: int = 1) -> List[JapaneseNewsItem]:
         logging.debug("Fetching Japanese RSS feed from %s", self.feed_url)
         resp = self.session.get(self.feed_url, timeout=self.timeout)
         resp.raise_for_status()

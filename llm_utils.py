@@ -59,26 +59,80 @@ def _parse_json_response(raw: str) -> Dict[str, Any]:
 
 def generate_english_learning(client: LLMClient, news_text: str) -> Dict[str, Any]:
     system_prompt = (
-        "You are an assistant that prepares concise, real-world English learning material "
-        "for intermediate learners based on actual technology news."
+        "You are an assistant that writes concise, real-world English summaries "
+        "based on actual technology news for intermediate learners."
     )
     user_prompt = f"""
-Use the following technology news to create English learning material.
+Use the following technology news to create an English summary and a Chinese translation of that summary.
+
 News:
 \"\"\"{news_text}\"\"\"
 
 Requirements:
-- Write a natural 150-200 word summary that is easy to read but still professional.
-- Provide a vocabulary list of 10-15 words. Each entry must contain the word, an English definition, a Chinese explanation, and a short English example sentence.
-- Return JSON with this structure:
+- Write a natural 150-200 word English summary (summary_en) that is easy to read but still professional.
+- Provide a faithful Chinese translation of the English summary (summary_zh).
+- Do NOT include any vocabulary list.
+- Respond as JSON with this structure:
 {{
-  "summary": "paragraphs in Markdown",
-  "vocabulary": [
-    {{"word": "...", "definition_en": "...", "definition_zh": "...", "example": "..."}}
-  ]
+  "summary_en": "...",
+  "summary_zh": "..."
 }}
 """
-    raw = client.chat(system_prompt, user_prompt)
+    raw = client.chat(system_prompt, user_prompt, response_format="json_object")
+    return _parse_json_response(raw)
+
+
+def generate_backend_architect_coaching(
+    client: LLMClient,
+    *,
+    article_title: str,
+    article_url: str,
+    article_text: str,
+) -> Dict[str, Any]:
+    system_prompt = (
+        "You are a senior backend architect English coach. "
+        "You teach practical, interview-ready English by extracting reusable technical phrases "
+        "from real engineering articles."
+    )
+    user_prompt = f"""
+You are given a real engineering article.
+
+Title: {article_title}
+URL: {article_url}
+
+Article (full text):
+\"\"\"{article_text}\"\"\"
+
+Please generate content using this logic:
+
+1) Extract 3 backend Core Tech Chunks (core_chunks).
+   - Each must be a verb-object phrase or an adjective phrase.
+   - Strictly forbid single generic words.
+   - Make them specific to backend / distributed systems / data / reliability / performance.
+   - Provide Chinese meaning for each.
+
+2) Extract 1 Logic Connector (logic_connector) used to express trade-offs or causality in architecture.
+   - Provide Chinese meaning.
+
+3) Design 1 Mock Interview Q&A (mock_interview).
+   - The question is about backend architecture.
+   - The answer MUST use all 3 core chunks and the logic connector.
+   - The answer MUST follow STAR: Situation, Task, Action, Result.
+
+Output constraints:
+- Write the chunks and connector in English.
+- Keep each chunk concise (prefer <= 7 words if possible).
+- Respond as JSON with this structure:
+{{
+  "topic": "...",
+  "core_chunks": [
+    {{"en": "...", "zh": "..."}}
+  ],
+  "logic_connector": {{"en": "...", "zh": "..."}},
+  "mock_interview": {{"question": "...", "answer": "..."}}
+}}
+"""
+    raw = client.chat(system_prompt, user_prompt, response_format="json_object")
     return _parse_json_response(raw)
 
 
@@ -93,13 +147,15 @@ News:
 
 Requirements:
 - Translate the full text to Chinese.
-- Extract 8-12 important Japanese words found in the news. Provide word, part_of_speech, and Chinese meaning.
+- Provide Hepburn-style romaji for the entire Japanese article (news_romaji) so learners can read it out loud.
+- Extract 8-12 important Japanese words found in the news. For each entry include the original word, its romaji reading, part_of_speech, and Chinese meaning.
 - Explain 2-3 grammar points from JLPT N5-N3 level that actually appear in the article, referencing the sentence fragments where they occur.
 - Respond in JSON with this format:
 {{
+  "news_romaji": "full romaji transcription of the article",
   "translation": "full Chinese translation in Markdown paragraphs",
   "vocabulary": [
-    {{"word": "...", "part_of_speech": "...", "meaning_zh": "..."}}
+    {{"word": "...", "romaji": "...", "part_of_speech": "...", "meaning_zh": "..."}}
   ],
   "grammar": [
     {{"title": "...", "description": "explain usage and give example from text"}}
