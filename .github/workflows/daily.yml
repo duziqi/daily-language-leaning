@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   schedule:
     # Runs daily at 08:00 JST (23:00 UTC).
-    - cron: "0 23 * * *"
+    - cron: "0 0 * * *"
 
 concurrency:
   group: daily-language-learning
